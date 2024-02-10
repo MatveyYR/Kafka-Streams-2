@@ -10,7 +10,7 @@ import org.apache.kafka.streams.state.KeyValueStore;
 
 import static alert.Product.ProductApp.STATE_STORE_NAME;
 
-public class ProductJoiner implements ValueTransformerWithKey<String, GenericRecord, ProductJoinerApp.JoinResult> {
+public class ProductJoiner implements ValueTransformerWithKey<String, GenericRecord, ProductApp.JoinResult> {
     private KeyValueStore<String, GenericRecord> productStore;
     private ProcessorContext context;
 
@@ -23,7 +23,7 @@ public class ProductJoiner implements ValueTransformerWithKey<String, GenericRec
     }
 
     @Override
-    public ProductJoinerApp.JoinResult transform(String key, GenericRecord purchase) {
+    public ProductApp.JoinResult transform(String key, GenericRecord purchase) {
         try {
             if (key == null) {
                 throw new IllegalArgumentException("Key for message can't be null!");
@@ -45,12 +45,12 @@ public class ProductJoiner implements ValueTransformerWithKey<String, GenericRec
             // копируем в наше сообщение нужные поля из сообщения о товаре
             result.put("product_name", product.get("name"));
             result.put("product_price", product.get("price"));
-            return new ProductJoinerApp.JoinResult(true, result);
+            return new ProductApp.JoinResult(true, result);
         } catch (Exception e) {
             // добавляем хеддер с ошибкой к нашему сообщению
             // доступно только в Processor API
             context.headers().add("ERROR", e.getMessage().getBytes());
-            return new ProductJoinerApp.JoinResult(false, purchase);
+            return new ProductApp.JoinResult(false, purchase);
         }
     }
 

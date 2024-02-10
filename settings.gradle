@@ -1,0 +1,3 @@
+rootProject.name = 'kafka-streams-netology'
+include 'im.manokhin.joiner'
+include 'im.manokhin.alerter'

@@ -1,0 +1,58 @@
+buildscript {
+    ext {
+        log4jVersion = '2.14.1'
+    }
+}
+
+plugins {
+    id 'java'
+}
+
+group 'im.manokhin'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+    maven {
+        url = "https://packages.confluent.io/maven/"
+    }
+}
+
+dependencies {
+    implementation 'org.apache.kafka:kafka-streams:2.8.0'
+    implementation 'io.confluent:kafka-streams-avro-serde:6.2.0'
+    implementation("org.slf4j:slf4j-log4j12:1.7.32")
+    implementation("org.glassfish.jaxb:jaxb-runtime:3.0.2")
+}
+
+task runJava1(type: JavaExec) {
+    main = 'im.manokhin.joiner.ProductJoinerApp'
+    classpath = sourceSets.main.runtimeClasspath
+}
+
+task runJava2(type: JavaExec) {
+    main = 'im.manokhin.alerter.EarningAlertsApp'
+    classpath = sourceSets.main.runtimeClasspath
+}
+
+tasks.runJava1 {
+    doFirst {
+        println "Running runJava1"
+    }
+
+    doLast {
+        println "Finished runJava1"
+    }
+}
+
+tasks.runJava2 {
+    doFirst {
+        println "Running runJava2"
+    }
+
+    doLast {
+        println "Finished runJava2"
+    }
+}
+
+tasks.runJava1.finalizedBy(tasks.runJava2)

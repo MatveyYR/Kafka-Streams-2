@@ -1,4 +1,4 @@
-package im.manokhin.alerter;
+package alerter;
 
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
@@ -19,30 +19,23 @@ import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 
 public class EarningAlertsApp {
-    public static final String PURCHASE_WITH_JOINED_PRODUCT_TOPIC_NAME = "purchase_with_joined_product-processor";
+    public static final String PURCHASE_WITH_PRODUCT_TOPIC_NAME = "purchase_with_product-processor";
     public static final String RESULT_TOPIC = "product_earnings_alerts-processor";
     public static final double MAX_EARNINGS_PER_MINUTE = 3000;
     public static final String STATE_STORE_NAME = "state-store";
 
     public static void main(String[] args) throws InterruptedException {
-        // создаем клиент для общения со schema-registry
         var client = new CachedSchemaRegistryClient("http://localhost:8081", 16);
         var serDeProps = Map.of(
-                // указываем сериализатору, что может самостояетльно регистрировать схемы
                 KafkaAvroSerializerConfig.AUTO_REGISTER_SCHEMAS, "true",
                 KafkaAvroSerializerConfig.SCHEMA_REGISTRY_URL_CONFIG, "http://localhost:8081"
         );
 
-        // строим нашу топологию
         Topology topology = buildTopology(client, serDeProps);
 
-        // если скопировать вывод этой команды вот сюда - https://zz85.github.io/kafka-streams-viz/
-        // то можно получить красивую визуализацию топологии прямо в браузере
         System.out.println(topology.describe());
 
         KafkaStreams kafkaStreams = new KafkaStreams(topology, getStreamsConfig());
-        // вызов latch.await() будет блокировать текущий поток
-        // до тех пор пока latch.countDown() не вызовут 1 раз
         CountDownLatch latch = new CountDownLatch(1);
         Runtime.getRuntime().addShutdownHook(new Thread("shutdown-hook") {
             @Override
@@ -54,7 +47,6 @@ public class EarningAlertsApp {
 
         try {
             kafkaStreams.start();
-            // будет блокировать поток, пока из другого потока не будет вызван метод countDown()
             latch.await();
         } catch (Exception e) {
             e.printStackTrace();
@@ -64,54 +56,44 @@ public class EarningAlertsApp {
 
     public static Properties getStreamsConfig() {
         Properties props = new Properties();
-        // имя этого приложения для кафки
-        // приложения с одинаковым именем объединятся в ConsumerGroup и распределят обработку партиций между собой
         props.put(StreamsConfig.APPLICATION_ID_CONFIG, "AlerterProcessorAPI");
-        // адреса брокеров нашей кафки (у нас он 1)
         props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
-        // если вы захотите обработать записи заново, не забудьте удалить папку со стейтами
-        // а лучше воспользуйтесь методом kafkaStreams.cleanUp()
         props.put(StreamsConfig.STATE_DIR_CONFIG, "states");
         return props;
     }
 
     public static Topology buildTopology(SchemaRegistryClient client, Map<String, String> serDeConfig) {
-        // Создаем класс для сериализации и десериализации наших сообщений
         var avroSerde = new GenericAvroSerde(client);
         avroSerde.configure(serDeConfig, false);
 
         Topology topology = new Topology();
 
-        // Получаем из кафки поток сообщений из топика покупок
         topology.addSource(
                 "source",
                 new StringDeserializer(), new KafkaAvroDeserializer(client, serDeConfig),
-                PURCHASE_WITH_JOINED_PRODUCT_TOPIC_NAME
+                PURCHASE_WITH_PRODUCT_TOPIC_NAME
         );
 
-        // Добавляем ноду для обработки наших сообщений
         topology.addProcessor(
-                "alerts-transformer",  // указываем имя процессора
-                EarningAlertTrasformer::new, // указываем, как создать класс, который будет обрабатывать сообщения
-                "source" // указываем имя предыдущего процессора
+                "alerts-transformer", 
+                EarningAlertTrasformer::new,
+                "source"
         );
 
         var stateStoreSupplier = Stores.keyValueStoreBuilder(
                 Stores.persistentKeyValueStore(
-                        STATE_STORE_NAME // обязательно указываемя имя стора - оно нам пригодится в нашем трансформере
+                        STATE_STORE_NAME
                 ),
                 Serdes.ByteArray(), new Serdes.DoubleSerde()
         );
 
-        // добавляем стейт стор в топологию
         topology.addStateStore(stateStoreSupplier, "alerts-transformer");
 
-        // Добавляем указание, куда писать наши алерты
         topology.addSink(
-                "sink", // указываем имя процессора
-                RESULT_TOPIC, // указываем топик, в который отправить сообщения
+                "sink",
+                RESULT_TOPIC,
                 new StringSerializer(), new KafkaAvroSerializer(client, serDeConfig),
-                "alerts-transformer" // указываем имя предыдущего процессора
+                "alerts-transformer" 
         );
 
         return topology;

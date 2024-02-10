@@ -1,4 +1,4 @@
-package im.manokhin.alerter;
+package alerter;
 
 import org.apache.avro.generic.GenericRecord;
 import org.apache.kafka.streams.processor.Processor;

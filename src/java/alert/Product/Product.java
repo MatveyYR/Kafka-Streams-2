@@ -1,4 +1,4 @@
-package im.manokhin.joiner;
+package alert.Product;
 
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
@@ -8,7 +8,7 @@ import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.state.KeyValueStore;
 
-import static im.manokhin.joiner.ProductJoinerApp.STATE_STORE_NAME;
+import static alert.Product.ProductApp.STATE_STORE_NAME;
 
 public class ProductJoiner implements ValueTransformerWithKey<String, GenericRecord, ProductJoinerApp.JoinResult> {
     private KeyValueStore<String, GenericRecord> productStore;

@@ -1,3 +1,5 @@
+Домашнее задание по Kafka Streams-2
+
 Задание
 
 Цель: Написать приложение на Kafka Streams DSL или Processor API (по желанию)
